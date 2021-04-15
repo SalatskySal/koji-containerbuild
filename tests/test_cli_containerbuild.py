@@ -19,6 +19,7 @@ from __future__ import absolute_import
 
 import json
 import pytest
+from copy import deepcopy
 from flexmock import flexmock
 from collections import OrderedDict
 
@@ -46,6 +47,8 @@ def mock_session(target,
     """
     if not task_result:
         task_result = {}
+    else:
+        task_result = deepcopy(task_result)
 
     (flexmock(cli_containerbuild)
         .should_receive('activate_session'))  # and do nothing
@@ -136,12 +139,17 @@ def _expected_output(result, offset, indent):
 def expected_task_output(task_id, result, weburl, quiet=False):
     result['koji_builds'] = ['{}/buildinfo?buildID={}'.format(weburl, build_id)
                              for build_id in result.get('koji_builds', [])]
+    user_warnings = result.pop('user_warnings', None)
+
     output = ''
     if not quiet:
         output += 'Created task: {}\n'.format(task_id)
         output += 'Task info: {}/taskinfo?taskID={}\n'.format(weburl, task_id)
     output += "Task Result ({}):\n".format(task_id)
     output += ''.join(_expected_output(result, offset='', indent=' ' * 2))
+    if user_warnings:
+        output += "User warnings: \n"
+        output += ''.join(_expected_output(user_warnings, offset='', indent=' ' * 2))
     return output
 
 
@@ -715,7 +723,9 @@ class TestCLI(object):
             ['item_1', 'item_2'],
             [['nested']],
             ['various_types', {'key': 'value'}]
-        ]}
+        ]},
+        {'line': 'line1',
+         'user_warnings': ['warning', 'other warnings', 'line']},
     ])
     def test_build_success(self, capsys, handler_method, build_result, quiet):
         target = 'target'
