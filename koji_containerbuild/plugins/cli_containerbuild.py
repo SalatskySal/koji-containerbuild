@@ -56,8 +56,14 @@ def print_task_result(task_id, result, weburl):
     except TypeError:
         pass
 
+    user_warnings = result.pop('user_warnings', None)
+
     print("Task Result (%s):" % task_id)
     print_result(result)
+
+    if user_warnings:
+        print("User warnings: ")
+        print_result(user_warnings)
 
 
 def parse_arguments(options, args, flatpak):
