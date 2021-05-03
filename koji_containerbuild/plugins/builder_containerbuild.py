@@ -439,6 +439,17 @@ class BaseContainerTask(BaseTaskHandler):
             raise ContainerError("Build log finished but build still has not "
                                  "finished: %s." % build_response.status)
 
+    def _upload_user_warnings(self, logs_dir):
+        log_filename = os.path.join(logs_dir, "user_warnings.log")
+
+        if os.path.isfile(log_filename):
+            try:
+                with open(log_filename, 'rb') as logfile:
+                    self._user_warnings = logfile.readlines()
+            except Exception as error:
+                msg = "Exception ({}) while reading user warnings: {}".format(type(error), error)
+                raise ContainerError(msg)
+
     def _get_repositories(self, response):
         repositories = []
         try:
@@ -537,6 +548,10 @@ class BaseContainerTask(BaseTaskHandler):
                 os._exit(1)
             os._exit(0)
 
+        # User warnings are being processed in a child process,
+        # so we have to collect them back when the process ends
+        self._upload_user_warnings(osbs_logs_dir)
+
         response = self.osbs().wait_for_build_to_finish(build_id)
         if response.is_succeeded():
             self.upload_build_annotations(response)
@@ -582,9 +597,6 @@ class BaseContainerTask(BaseTaskHandler):
         }
         if arch:
             containerdata['arch'] = arch
-
-        if self._user_warnings:
-            containerdata['user_warnings'] = list(self._user_warnings)
 
         return containerdata
 
@@ -1014,10 +1026,15 @@ class BuildContainerTask(BaseContainerTask):
             if koji_build_id:
                 all_koji_builds.append(koji_build_id)
 
-        return {
+        task_response = {
             'repositories': all_repositories,
             'koji_builds': all_koji_builds,
         }
+
+        if self._user_warnings:
+            task_response['user_warnings'] = list(self._user_warnings)
+
+        return task_response
 
 
 class BuildSourceContainerTask(BaseContainerTask):
