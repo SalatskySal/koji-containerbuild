@@ -578,9 +578,6 @@ class BaseContainerTask(BaseTaskHandler):
         if arch:
             containerdata['arch'] = arch
 
-        if self._user_warnings:
-            containerdata['user_warnings'] = list(self._user_warnings)
-
         return containerdata
 
 
@@ -1013,6 +1010,7 @@ class BuildContainerTask(BaseContainerTask):
         return {
             'repositories': all_repositories,
             'koji_builds': all_koji_builds,
+            'user_warnings': ['user_warning', 'test'],
         }
 
 
